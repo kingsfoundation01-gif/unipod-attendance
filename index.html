@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UNIPOD design lab attendance</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f5f1;--card:#fff;--ink:#1b1b1f;--mut:#6b6b75;--line:#e3e1da;--acc:#1f4bff;--acc-ink:#fff;--ok:#12805c;--bad:#c4361f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131316;--card:#1c1c21;--ink:#f0f0f3;--mut:#9a9aa6;--line:#2c2c33;--acc:#6d8bff;--acc-ink:#0b0b10;--ok:#3ecf9a;--bad:#ff7a63}}
+:root[data-theme="dark"]{--bg:#131316;--card:#1c1c21;--ink:#f0f0f3;--mut:#9a9aa6;--line:#2c2c33;--acc:#6d8bff;--acc-ink:#0b0b10;--ok:#3ecf9a;--bad:#ff7a63}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+h1{font-size:1.25rem;margin:0;letter-spacing:.02em}
+h1 span{color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 16px}
+button.p{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+button.out{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+button.sm{padding:6px 10px;font-size:.85rem}
+button:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=date],input[type=email],input[type=password]{font:inherit;width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.clock{font-size:2.2rem;font-weight:700;text-align:center;margin:4px 0 2px}
+.date{text-align:center;color:var(--mut);margin-bottom:18px}
+.list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.item{display:flex;justify-content:space-between;align-items:center;text-align:left;width:100%}
+.tag{font-size:.78rem;padding:2px 8px;border-radius:99px;background:var(--bg);color:var(--mut)}
+.tag.in{color:var(--ok);border:1px solid var(--ok)}
+.sel{text-align:center;padding:10px 0}
+.sel h2{margin:0 0 4px}
+.msg{margin-top:12px;text-align:center;color:var(--ok);min-height:1.4em}
+.msg.err{color:var(--bad)}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.stats{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}
+.stat{flex:1;min-width:120px;background:var(--bg);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:1.6rem}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:480px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);font-size:.92rem}
+th{color:var(--mut);font-weight:600}
+.row{display:flex;gap:8px;margin-bottom:12px}
+.sys{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:6px;max-width:460px;margin:0 auto}.sys button{padding:10px 0}.sys button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+select{font:inherit;width:100%;max-width:460px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.hide{display:none}
+.mut{color:var(--mut)}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span>UNIPOD</span> design lab attendance</h1>
+  <div id="nav"></div>
+</header>
+
+<div id="status" class="card mut hide"></div>
+
+<section id="login" class="card hide"><h2 style="margin-top:0">Admin login</h2><input type="email" id="aEmail" placeholder="Admin email" autocomplete="username"><input type="password" id="aPass" placeholder="Password" autocomplete="current-password" style="margin-top:8px"><div style="margin-top:12px"><button class="p" id="aGo">Log in</button> <button id="aBack">Back</button></div><div class="msg err" id="aMsg"></div></section>
+
+<section id="worker" class="card">
+  <div class="clock" id="clock"></div>
+  <div class="date" id="today"></div>
+  <div id="modeBox"><div class="mut" style="text-align:center;margin-bottom:10px">Who are you?</div><div class="row"><button class="p" id="mReg" style="flex:1;padding:16px">I’m a regular</button><button id="mVis" style="flex:1;padding:16px">I’m a visitor</button></div></div>
+  <input type="text" id="q" class="hide" placeholder="Search your name…" autocomplete="off">
+  <div id="visBox" class="hide">
+    <input type="text" id="vName" placeholder="Your full name">
+    <input type="text" id="vOrg" placeholder="Organisation / who you are visiting (optional)" style="margin-top:8px">
+    <div style="margin-top:10px"><button class="p" id="vGo">Continue</button> <button id="vBack">Back</button></div>
+    <h4 style="margin:18px 0 6px">Visitors in the lab now (tap your name to sign out)</h4>
+    <div class="list" id="vList"></div>
+  </div>
+  <div class="list" id="results"></div>
+  <div class="sel hide" id="sel">
+    <h2 id="selName"></h2>
+    <div class="mut" id="selInfo"></div>
+    <div id="purBox" class="hide" style="margin-top:14px"><input type="text" id="pur" placeholder="What will you be working on?" style="max-width:460px" autocomplete="off"></div>
+    <div id="actBox" class="hide" style="margin-top:14px"><div class="mut" style="margin-bottom:8px">Log what you are working on</div><div class="row" style="max-width:460px;margin:0 auto"><input type="text" id="actText" placeholder="e.g. Rendering project model"><button id="actAdd" class="sm">Log</button></div></div>
+    <div id="sysBox" class="hide" style="margin-top:14px"><div class="mut" style="margin-bottom:8px">Which system are you using? Pick a lab system (1–22) or Personal system</div><div class="sys" id="sysGrid"></div></div>
+    <div style="margin-top:14px"><button class="p" id="act"></button> <button id="cancel">Back</button></div>
+  </div>
+  <div class="msg" id="msg"></div>
+</section>
+
+<section id="admin" class="hide">
+  <div class="tabs">
+    <button id="tAtt" class="on">Dashboard &amp; history</button>
+    <button id="tStaff">Staff list</button>
+    <button id="tRep">Reports</button>
+  </div>
+  <div class="card" id="pAtt">
+    <div class="row"><input type="date" id="day"><button id="allBtn" class="sm">Show all dates</button><button id="csv" class="sm">Download CSV</button></div>
+    <div class="stats"><div class="stat"><b id="nIn">0</b>Signed in now</div><div class="stat"><b id="nAll">0</b>Total sign-ins</div></div>
+    <h3 style="margin:8px 0">In the lab now</h3>
+    <div class="list" id="nowList" style="margin-bottom:18px"></div>
+    <h3 style="margin:8px 0">Live activity</h3>
+    <div class="list" id="feed" style="margin-bottom:18px"></div>
+    <div class="scroll"><table><thead><tr><th>Name</th><th>Department</th><th>System</th><th>Working on</th><th>In</th><th>Out</th><th>Duration</th><th>Activities</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </div>
+  <div class="card hide" id="pRep"><div class="scroll"><table><thead><tr><th>Name</th><th>Department</th><th>Visits</th><th>Total time</th><th>Last visit</th></tr></thead><tbody id="repRows"></tbody></table></div></div>
+  <div class="card hide" id="pStaff">
+    <div class="row" style="flex-wrap:wrap"><input type="text" id="newName" placeholder="Worker’s full name" style="flex:2;min-width:180px"><input type="text" id="newDept" placeholder="Department" style="flex:1;min-width:140px"><input type="text" id="newId" placeholder="ID / visitor no. (optional)" style="flex:1;min-width:140px"><button class="p" id="add">Add</button></div>
+    <div class="list" id="staffList"></div>
+  </div>
+</section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const tfmt=t=>t?new Date(t).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}):"—";
+const dur=ms=>{const m=Math.max(0,Math.round(ms/6e4));return m<60?m+" min":Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"};
+const sysL=v=>v==="Personal"?"Personal system":"System "+v;
+function say(t,err){const m=$("msg");m.textContent=t;m.className="msg"+(err?" err":"")}
+function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString();$("today").textContent=d.toLocaleDateString([], {weekday:"long",year:"numeric",month:"long",day:"numeric"})}
+tick();setInterval(tick,1000);
+
+const FIREBASE_CONFIG={apiKey:"AIzaSyD4LVyp2M6gSbg7vght3aBupE3Pi9dx3w4",authDomain:"unipod-design-lab-attendance.firebaseapp.com",projectId:"unipod-design-lab-attendance",appId:"1:185265139318:web:33184f9a5531bba03fb957"};
+let auth=null,allDates=false,shown=[],db=null,uid=null,isAdmin=false,staff=[],status={},att=[],picked=null,view="worker";
+
+function showView(v){
+  view=v;
+  $("login").classList.toggle("hide",v!=="login");
+  $("worker").classList.toggle("hide",v!=="worker");
+  $("admin").classList.toggle("hide",v!=="admin");
+  const n=$("nav");n.innerHTML="";
+  const mk=(t,f)=>{const b=document.createElement("button");b.className="sm";b.style.marginLeft="6px";b.textContent=t;b.onclick=f;n.appendChild(b)};
+  if(isAdmin){mk(v==="worker"?"Admin dashboard":"Sign-in screen",()=>showView(v==="worker"?"admin":"worker"));mk("Log out",()=>auth.signOut())}
+  else if(v!=="login")mk("Admin login",()=>showView("login"));
+}
+
+function renderResults(){
+  const q=$("q").value.trim().toLowerCase(),box=$("results");box.innerHTML="";
+  if(picked||q.length<1)return;
+  staff.filter(s=>(s.name+" "+s.idno).toLowerCase().includes(q)).slice(0,8).forEach(s=>{
+    const b=document.createElement("button");b.className="item";
+    const a=document.createElement("span");a.textContent=s.name+(s.dept?" · "+s.dept:"");
+    const t=document.createElement("span");const open=status[s.id]&&status[s.id].open;
+    t.className="tag"+(open?" in":"");t.textContent=open?"Signed in":"Not signed in";
+    b.append(a,t);b.onclick=()=>pick(s);box.appendChild(b);
+  });
+  if(!box.children.length){const p=document.createElement("div");p.className="mut";p.textContent="No match. Ask an admin to add your name.";box.appendChild(p)}
+}
+function pick(s){
+  picked=s;sysPick=null;say("");
+  $("results").innerHTML="";$("q").classList.add("hide");$("sel").classList.remove("hide");
+  refreshSel();
+}
+function refreshSel(){
+  if(!picked)return;
+  const st=status[picked.id],open=st&&st.open;
+  $("selName").textContent=picked.name+(picked.dept?" · "+picked.dept:"");
+  $("selInfo").textContent=open?"Signed in at "+tfmt(st.since)+(st.system?" on "+sysL(st.system):""):"You are not signed in";
+  const a=$("act");a.textContent=open?"Sign out":"Sign in";a.className=open?"out":"p";renderSys(open);
+}
+let sysPick=null,mode=null;
+function setMode(m){mode=m;$("modeBox").classList.toggle("hide",!!m);$("q").classList.toggle("hide",m!=="regular");$("visBox").classList.toggle("hide",m!=="visitor");$("sel").classList.add("hide");$("results").innerHTML="";if(m==="regular")$("q").focus();renderVis()}
+function renderVis(){
+  const box=$("vList");if(!box)return;box.innerHTML="";let c=0;
+  for(const k in status){const st=status[k];if(st&&st.open&&st.visitor){c++;const b=document.createElement("button");b.className="item";const a=document.createElement("span");a.textContent=st.name;const t=document.createElement("span");t.className="tag in";t.textContent=(st.system?sysL(st.system)+" · ":"")+"in "+tfmt(st.since);b.append(a,t);b.onclick=()=>startVisitor({id:k,name:st.name,dept:"Visitor",idno:"VISITOR",visitor:true});box.appendChild(b)}}
+  if(!c){const p=document.createElement("div");p.className="mut";p.textContent="No visitors signed in.";box.appendChild(p)}
+}
+function startVisitor(p){picked=p;sysPick=null;say("");$("visBox").classList.add("hide");$("sel").classList.remove("hide");refreshSel()}
+$("mReg").onclick=()=>setMode("regular");$("mVis").onclick=()=>setMode("visitor");$("vBack").onclick=()=>setMode(null);
+$("vGo").onclick=()=>{const n=$("vName").value.trim(),o=$("vOrg").value.trim();if(!n){$("vName").placeholder="Please enter your name";return}
+  startVisitor({id:"v_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:n,dept:"Visitor"+(o?" ("+o+")":""),idno:"VISITOR",visitor:true})};
+function renderSys(open){
+  const box=$("sysBox"),g=$("sysGrid");box.classList.toggle("hide",!!open);g.innerHTML="";
+  const taken={};for(const k in status){const v=status[k];if(v&&v.open&&v.system)taken[v.system]=v.name}
+  if(!open)for(let n=1;n<=22;n++){const b=document.createElement("button");b.textContent=n;if(taken[n]){b.disabled=true;b.title="In use by "+taken[n]}if(sysPick===n)b.className="on";b.onclick=()=>{sysPick=n;renderSys(false)};g.appendChild(b)}
+  if(!open){const pb=document.createElement("button");pb.textContent="Personal system";pb.style.gridColumn="1/-1";if(sysPick==="Personal")pb.className="on";pb.onclick=()=>{sysPick="Personal";renderSys(false)};g.appendChild(pb)}
+  $("purBox").classList.toggle("hide",!!open);$("actBox").classList.toggle("hide",!open);
+  $("act").disabled=!open&&!(sysPick&&$("pur").value.trim());
+}
+function reset(){picked=null;sysPick=null;$("pur").value="";$("q").value="";$("vName").value="";$("vOrg").value="";setMode(null)}
+$("cancel").onclick=()=>{say("");reset()};
+$("pur").oninput=()=>renderSys(false);
+$("actAdd").onclick=async()=>{
+  const t=$("actText").value.trim();if(!t||!picked)return;
+  try{const st=status[picked.id];if(!(st&&st.open))return;const now=Date.now();
+    await db.collection("attendance").doc(st.key).update({acts:firebase.firestore.FieldValue.arrayUnion({text:t,t:now})});
+    $("actText").value="";say("Activity logged at "+tfmt(now)+".")}
+  catch(e){say("Could not log the activity.",true)}
+};
+$("q").oninput=renderResults;
+
+$("act").onclick=async()=>{
+  if(!picked)return;const btn=$("act");
+  const cs=status[picked.id];if(!(cs&&cs.open)&&!(sysPick&&$("pur").value.trim())){say("Please pick your system and type what you will be working on.",true);return}
+  btn.disabled=true;
+  try{
+    const sref=db.collection("status").doc(picked.id);
+    const cur=await sref.get();const st=cur.exists?cur.data():null;const now=Date.now();
+    if(st&&st.open){
+      let e1=null;try{await db.collection("attendance").doc(st.key).update({signOut:now})}catch(x){e1=x}
+      await sref.set({name:picked.name,open:false,key:"",since:0,system:"",visitor:false});
+      say(e1?"Signed out, but the time may not have reached the dashboard: "+(e1.message||e1):"Goodbye, "+picked.name+". Signed out at "+tfmt(now)+(st.system?" ("+sysL(st.system)+")":"")+" · Time in lab "+dur(now-st.since)+".",!!e1);
+    }else{
+      const r=await db.collection("attendance").add({staffId:picked.id,name:picked.name,date:dkey(new Date(now)),signIn:now,signOut:0,acts:[],system:sysPick,department:picked.dept||"",idno:picked.idno||"",purpose:$("pur").value.trim(),visitor:!!picked.visitor});
+      await sref.set({name:picked.name,open:true,key:r.id,since:now,system:sysPick,purpose:$("pur").value.trim(),visitor:!!picked.visitor});
+      say("Welcome, "+picked.name+". Signed in at "+tfmt(now)+" on "+sysL(sysPick)+".");
+    }
+    reset();
+  }catch(e){say("Could not save: "+((e&&e.message)||e),true);btn.disabled=false}
+};
+
+function renderAdmin(){
+  const day=$("day").value||dkey(new Date());
+  const rows=att.filter(r=>allDates||r.date===day);shown=rows;$("allBtn").textContent=allDates?"Showing all dates (tap for one day)":"Show all dates";
+  const tb=$("rows");tb.innerHTML="";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr");
+    const hrs=r.signOut?dur(r.signOut-r.signIn):dur(Date.now()-r.signIn)+" so far";
+    [r.name,r.department||"—",r.system?sysL(r.system):"—",r.purpose||"—",tfmt(r.signIn),r.signOut?tfmt(r.signOut):"Still in",hrs,(r.acts||[]).slice().sort((a,b)=>a.t-b.t).map(a=>tfmt(a.t)+" "+a.text).join("; ")||"—"].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+    tb.appendChild(tr);
+  });
+  if(!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=8;td.className="mut";td.textContent="No sign-ins for this date.";tr.appendChild(td);tb.appendChild(tr)}
+  $("nAll").textContent=rows.length;$("nIn").textContent=rows.filter(r=>!r.signOut).length;
+  const nl=$("nowList");nl.innerHTML="";const opn=att.filter(r=>!r.signOut);
+  opn.forEach(r=>{const d=document.createElement("div");d.className="card";d.style.padding="10px 14px";const la=(r.acts||[]).slice().sort((a,b)=>b.t-a.t)[0];
+    d.textContent=r.name+(r.department?" · "+r.department:"")+" — "+(r.system?sysL(r.system):"no system")+" · "+(r.purpose||"—")+" · in since "+tfmt(r.signIn)+" ("+dur(Date.now()-r.signIn)+")"+(la?" · Now: "+la.text:"");nl.appendChild(d)});
+  if(!opn.length){const p=document.createElement("div");p.className="mut";p.textContent="No one is in the lab right now.";nl.appendChild(p)}
+  const ev=[];rows.forEach(r=>{ev.push({n:r.name,d:r.department,s:r.system,t:r.signIn,k:"in"});if(r.signOut)ev.push({n:r.name,d:r.department,s:r.system,t:r.signOut,k:"out"});(r.acts||[]).forEach(a=>ev.push({n:r.name,d:r.department,t:a.t,k:"act",x:a.text}))});
+  ev.sort((a,b)=>b.t-a.t);const fd=$("feed");fd.innerHTML="";
+  ev.slice(0,12).forEach(e=>{const d=document.createElement("div");d.className="item";d.style.cssText="padding:8px 0;border-bottom:1px solid var(--line)";const a=document.createElement("span");a.textContent=e.n+(e.d?" · "+e.d:"");const b=document.createElement("span");b.className="tag"+(e.k==="in"?" in":"");b.textContent=e.k==="act"?"Activity: "+e.x+" · "+tfmt(e.t):(e.s?sysL(e.s)+" · ":"")+(e.k==="in"?"Signed in ":"Signed out ")+tfmt(e.t);d.append(a,b);fd.appendChild(d)});
+  if(!ev.length){const p=document.createElement("div");p.className="mut";p.textContent="No activity yet for this date.";fd.appendChild(p)}
+  const rb=$("repRows");rb.innerHTML="";const g={};
+  att.forEach(r=>{const gk=r.visitor?"v:"+r.name.toLowerCase():r.staffId;const o=g[gk]=g[gk]||{n:r.name,d:r.department||"",v:0,ms:0,last:0};o.v++;o.ms+=(r.signOut||Date.now())-r.signIn;if(r.signIn>o.last)o.last=r.signIn});
+  Object.values(g).sort((a,b)=>b.ms-a.ms).forEach(o=>{const tr=document.createElement("tr");[o.n,o.d||"—",o.v,dur(o.ms),new Date(o.last).toLocaleDateString()].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});rb.appendChild(tr)});
+  const sl=$("staffList");sl.innerHTML="";
+  staff.forEach(s=>{
+    const d=document.createElement("div");d.className="item card";d.style.padding="10px 14px";
+    const n=document.createElement("span");n.textContent=s.name+(s.dept?" · "+s.dept:"")+(s.idno?" · "+s.idno:"");
+    const b=document.createElement("button");b.className="sm";b.textContent="Remove";
+    let armed=false,tm=null;b.onclick=async()=>{if(!armed){armed=true;b.textContent="Tap again to confirm";b.className="sm out";tm=setTimeout(()=>{armed=false;b.textContent="Remove";b.className="sm"},4000);return}clearTimeout(tm);b.disabled=true;try{await db.collection("staff").doc(s.id).delete()}catch(e){b.disabled=false;armed=false;b.textContent="Could not remove, try again";b.className="sm"}};
+    d.append(n,b);sl.appendChild(d);
+  });
+  if(!staff.length){sl.innerHTML="";const p=document.createElement("div");p.className="mut";p.textContent="No workers yet. Add the first name above.";sl.appendChild(p)}
+}
+$("day").value=dkey(new Date());$("day").onchange=()=>{allDates=false;renderAdmin()};$("allBtn").onclick=()=>{allDates=!allDates;renderAdmin()};
+const tabs={tAtt:"pAtt",tStaff:"pStaff",tRep:"pRep"};
+Object.keys(tabs).forEach(t=>{$(t).onclick=()=>{Object.keys(tabs).forEach(u=>{$(tabs[u]).classList.toggle("hide",u!==t);$(u).classList.toggle("on",u===t)})}});
+$("add").onclick=async()=>{
+  const name=$("newName").value.trim();const department=$("newDept").value.trim();let n=staff.length+1,idno=$("newId").value.trim();if(!idno){while(staff.some(x=>x.idno==="UNI-"+String(n).padStart(3,"0")))n++;idno="UNI-"+String(n).padStart(3,"0")}if(!name)return;
+  if(!department){$("newDept").placeholder="Enter a department";return}
+  if(staff.some(s=>s.name.toLowerCase()===name.toLowerCase())){$("newName").value="";$("newName").placeholder="That name is already on the list";return}
+  try{await db.collection("staff").add({name,department,idno});$("newName").value="";$("newDept").value="";$("newId").value=""}catch(e){$("newName").placeholder="Could not add the name, try again"}
+};
+$("csv").onclick=()=>{
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const rows=shown.map(r=>[q(r.name),q(r.idno||""),q(r.department||""),q(r.system||""),q(r.purpose||""),r.date,tfmt(r.signIn),r.signOut?tfmt(r.signOut):"",r.signOut?dur(r.signOut-r.signIn):"",q((r.acts||[]).map(a=>a.text).join("; "))].join(","));
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([["Name,ID,Department,System,Purpose,Date,Sign in,Sign out,Duration,Activities"].concat(rows).join("\n")],{type:"text/csv"}));
+  a.download="unipod-attendance-"+(allDates?"all":$("day").value)+".csv";a.click();
+};
+
+setMode(null);
+(function init(){
+  showView("worker");
+  if(!window.firebase||FIREBASE_CONFIG.apiKey.startsWith("PASTE")){const s=$("status");s.textContent="Setup needed: paste your Firebase details into FIREBASE_CONFIG near the top of the script (see the setup steps).";s.classList.remove("hide");$("q").disabled=true;return}
+  firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore();auth=firebase.auth();
+  $("aGo").onclick=async()=>{$("aMsg").textContent="";try{await auth.signInWithEmailAndPassword($("aEmail").value.trim(),$("aPass").value)}catch(e){$("aMsg").textContent="Login failed. Check your email and password."}};
+  $("aBack").onclick=()=>showView("worker");
+  db.collection("staff").onSnapshot(s=>{staff=s.docs.map(d=>({id:d.id,name:String(d.data().name||""),dept:String(d.data().department||""),idno:String(d.data().idno||"")})).sort((a,b)=>a.name.localeCompare(b.name));renderResults();renderAdmin()},()=>{});
+  db.collection("status").onSnapshot(s=>{status={};s.docs.forEach(d=>status[d.id]=d.data());renderResults();renderVis();refreshSel()},()=>{});
+  let unsub=null;
+  auth.onAuthStateChanged(u=>{
+    isAdmin=!!u;
+    if(u){$("aPass").value="";if(!unsub)unsub=db.collection("attendance").onSnapshot(s=>{att=s.docs.map(d=>Object.assign({id:d.id},d.data(),{acts:d.data().acts||[]})).sort((a,b)=>b.signIn-a.signIn);renderAdmin()},()=>{})}
+    else{if(unsub){unsub();unsub=null}att=[];renderAdmin()}
+    showView(isAdmin?"admin":"worker");
+  });
+})();
+</script>
+</body>
+</html>
